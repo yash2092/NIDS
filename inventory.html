@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>NetGuardian</title>
+
+  <!-- Montserrat Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    /* Style for message box */
+    .message-box {
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid grey;
+      border-radius: 5px;
+      background-color: rgb(27, 27, 27);
+      color: blue;
+      font-size: larger;
+      cursor: pointer;
+    }
+
+    .message-box:hover {
+            background-color: #f9f9f9;
+        }
+    .dropdown {
+    display: none;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-top: 5px;
+}
+
+    /* Style for charts-card */
+    .charts-card {
+      width: 115em;
+      height: 47em; /* Set the fixed width */
+    }
+
+    /* Style for log div */
+    #log {
+      max-height: 600px; /* Set the maximum height */
+      overflow-y: auto; /* Enable vertical scroll */
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-container">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="menu-icon" onclick="openSidebar()">
+        <span class="material-icons-outlined">menu</span>
+      </div>
+      <div class="header-left">
+        <span class="material-icons-outlined">search</span>
+      </div>
+      <div class="header-right">
+        <span class="material-icons-outlined">notifications</span>
+        <span></span>
+        <span class="material-icons-outlined">account_circle</span>
+      </div>
+    </header>
+    <!-- End Header -->
+
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-title">
+        <div class="sidebar-brand">
+          <span class="material-icons-outlined">safety_check</span> NetGuardian
+        </div>
+        <span class="material-icons-outlined" onclick="closeSidebar()">close</span>
+      </div>
+
+      <ul class="sidebar-list">
+        <li class="sidebar-list-item">
+          <a href="index.html">
+            <span class="material-icons-outlined">dashboard</span> Dashboard
+          </a>
+        </li>
+        <li class="sidebar-list-item">
+          <a href="inventory.html">
+            <span class="material-icons-outlined">fact_check</span> Inventory
+          </a>
+        </li>
+        <li class="sidebar-list-item">
+          <a href="#" target="_blank">
+            <span class="material-icons-outlined">poll</span> Reports
+          </a>
+        </li>
+        <li class="sidebar-list-item">
+          <a href="#" target="_blank">
+            <span class="material-icons-outlined">settings</span> Settings
+          </a>
+        </li>
+      </ul>
+    </aside>
+    <!-- End Sidebar -->
+
+    <!-- Main -->
+    <main class="main-container">
+      <div class="main-title">
+        <h2>INVENTORY</h2>
+      </div>
+      
+      <div class="charts">
+
+        <div class="charts-card">
+          <h2 class="chart-title">Network Monitoring</h2>
+          <div id="log" class="scrollable"></div>
+        </div>
+
+        <!-- <div class="charts-card">
+          <h2 class="chart-title">Network Traffic</h2>
+          <div id="area-chart"></div>
+        </div> -->
+
+      </div>
+      
+    </main>
+  </div>
+
+  <script>
+    const ws = new WebSocket("ws://localhost:8000/ws/log");
+
+    ws.onmessage = function(event) {
+        const message = JSON.parse(event.data);
+        const logDiv = document.getElementById("log");
+        const messageBox = document.createElement("div");
+        messageBox.classList.add("message-box");
+        messageBox.innerHTML = `[${message.rule}] ${message.packet} | ${message.action}`;
+
+        // Set color based on rule
+        if (message.type === 'Log') {
+            messageBox.style.color = 'grey';
+        } else if (message.type === 'Detection') {
+            messageBox.style.color = 'blue';
+        } else if (message.type === 'Alert') {
+            messageBox.style.color = 'red';
+        }
+
+        messageBox.addEventListener("click", function() {
+            const dropdown = messageBox.querySelector('.dropdown');
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        });
+
+        const dropdown = document.createElement('div');
+        dropdown.classList.add('dropdown');
+        const pre = document.createElement('pre');
+        pre.textContent = JSON.stringify(message, null, 2);
+        dropdown.appendChild(pre);
+        messageBox.appendChild(dropdown);
+        logDiv.appendChild(messageBox);
+    };
+
+    ws.onclose = function(event) {
+        console.log("WebSocket connection closed");
+    };
+
+    ws.onerror = function(error) {
+        console.error("WebSocket error: ", error);
+    };
+</script>
+
+</body>
+</html>

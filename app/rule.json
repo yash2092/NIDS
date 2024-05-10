@@ -1,0 +1,32 @@
+[
+    {
+        "name": "DDoS Detection",
+        "rule_type": "Alert",
+        "conditions": {"packet_rate": ">10000"},
+        "action": "Alert: Possible DDoS attack"
+    },
+    {
+        "name": "SYN Flood Detection",
+        "rule_type": "Alert",
+        "conditions": {"protocol": "TCP", "flags": "S"},
+        "action": "Alert: Possible SYN flood attack"
+    },
+    {
+        "name": "ICMP Flood Detection",
+        "rule_type": "Alert",
+        "conditions": {"protocol": "ICMP"},
+        "action": "Alert: Possible ICMP flood attack"
+    },
+    {
+        "name": "UDP Flood Detection",
+        "rule_type": "Alert",
+        "conditions": {"protocol": "UDP"},
+        "action": "Alert: Possible UDP flood attack"
+    },
+    {
+        "name": "Fuzzing Detection",
+        "rule_type": "Alert",
+        "conditions": {"payload_length": "<10"},
+        "action": "Alert: Possible fuzzing attack"
+    }
+]

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>Admin Dashboard</title>
+    <title>NetGuardian</title>
 
     <!-- Montserrat Font -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -27,7 +27,7 @@
         </div>
         <div class="header-right">
           <span class="material-icons-outlined">notifications</span>
-          <span class="material-icons-outlined">email</span>
+          <span></span>
           <span class="material-icons-outlined">account_circle</span>
         </div>
       </header>
@@ -37,34 +37,19 @@
       <aside id="sidebar">
         <div class="sidebar-title">
           <div class="sidebar-brand">
-            <span class="material-icons-outlined">shopping_cart</span> STORE
+            <span class="material-icons-outlined">safety_check</span> NetGuardian
           </div>
           <span class="material-icons-outlined" onclick="closeSidebar()">close</span>
         </div>
 
         <ul class="sidebar-list">
           <li class="sidebar-list-item">
-            <a href="#" target="_blank">
+            <a href="index.html">
               <span class="material-icons-outlined">dashboard</span> Dashboard
             </a>
           </li>
           <li class="sidebar-list-item">
-            <a href="#" target="_blank">
-              <span class="material-icons-outlined">inventory_2</span> Products
-            </a>
-          </li>
-          <li class="sidebar-list-item">
-            <a href="#" target="_blank">
-              <span class="material-icons-outlined">category</span> Categories
-            </a>
-          </li>
-          <li class="sidebar-list-item">
-            <a href="#" target="_blank">
-              <span class="material-icons-outlined">groups</span> Customers
-            </a>
-          </li>
-          <li class="sidebar-list-item">
-            <a href="#" target="_blank">
+            <a href="inventory.html" >
               <span class="material-icons-outlined">fact_check</span> Inventory
             </a>
           </li>
@@ -92,26 +77,26 @@
 
           <div class="card">
             <div class="card-inner">
-              <h3>PRODUCTS</h3>
+              <h3>BANDWIDTH</h3>
               <span class="material-icons-outlined">inventory_2</span>
             </div>
-            <h1>249</h1>
+            <h1 id ="bandwidthValue">0</h1>
           </div>
 
           <div class="card">
             <div class="card-inner">
-              <h3>CATEGORIES</h3>
+              <h3>TOTAL CONNECTION</h3>
               <span class="material-icons-outlined">category</span>
             </div>
-            <h1>25</h1>
+            <h1 id="device">0</h1>
           </div>
 
           <div class="card">
             <div class="card-inner">
-              <h3>CUSTOMERS</h3>
+              <h3>BLOCKED CONNECTION</h3>
               <span class="material-icons-outlined">groups</span>
             </div>
-            <h1>1500</h1>
+            <h1>0</h1>
           </div>
 
           <div class="card">
@@ -119,7 +104,7 @@
               <h3>ALERTS</h3>
               <span class="material-icons-outlined">notification_important</span>
             </div>
-            <h1>56</h1>
+            <h1>0</h1>
           </div>
 
         </div>
@@ -127,12 +112,12 @@
         <div class="charts">
 
           <div class="charts-card">
-            <h2 class="chart-title">Top 5 Products</h2>
+            <h2 class="chart-title">Top Services</h2>
             <div id="bar-chart"></div>
           </div>
 
           <div class="charts-card">
-            <h2 class="chart-title">Purchase and Sales Orders</h2>
+            <h2 class="chart-title">Network Traffic</h2>
             <div id="area-chart"></div>
           </div>
 
@@ -147,5 +132,73 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/apexcharts/3.35.5/apexcharts.min.js"></script>
     <!-- Custom JS -->
     <script src="js/scripts.js"></script>
+    <script>
+      function connectToWebSocket() {
+          const socket = new WebSocket('ws://localhost:8000/ws');
+
+          socket.onmessage = function(event) {
+              const data = JSON.parse(event.data);
+              updateBandwidth(data.bytes_recv);
+          };
+      }
+
+      function sniffTraffic() {
+        const socket = new WebSocket('ws://localhost:8000/ws/traffic'); // Adjust the URL accordingly
+        socket.onmessage = function(event) {
+          const network = JSON.parse(event.data);
+          const seriesData = network.map(network => ({
+            name: network.name,
+            data: network.data,
+          }));
+       
+          updateLineGraph(seriesData);
+        };
+
+      
+      }
+
+      function logger() {
+        const socket = new WebSocket('ws://localhost:8000/ws_logs'); // Adjust the URL accordingly
+        socket.onmessage = function(event) {
+          console.log(event.data);
+        };
+      }
+      
+      function updateBandwidth(receivedBandwidth) {
+          document.getElementById('bandwidthValue').innerText = receivedBandwidth;
+      }
+
+      async function fetchDevices() {
+            try {
+                const response = await fetch('http://127.0.0.1:8000/network/devices?ip_range=192.168.1.0%2F24');
+                const data = await response.json();
+                document.getElementById('device').textContent = data.total_devices;
+            } catch (error) {
+                console.error('Error fetching devices:', error);
+            }
+        }
+        
+    async function barGraph()
+      {
+        const socket = new WebSocket('ws://localhost:8000/ws_top_services');
+        socket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+  
+        // Extract service names and their counts
+        const serviceNames = Object.keys(data['top_services']);
+        const serviceCounts = Object.values(data['top_services']);
+        updateBarGraph(serviceNames,serviceCounts);
+      }
+    }
+
+
+        // Call the function to fetch devices when the page loads
+        window.onload = fetchDevices;
+      // Call the function to establish WebSocket connection
+      connectToWebSocket();
+      barGraph();
+      sniffTraffic();
+      logger();
+  </script>
   </body>
 </html>
