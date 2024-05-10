@@ -3,10 +3,8 @@ import psutil
 import asyncio 
 from typing import List
 from collections import defaultdict
-from websockets.exceptions import ConnectionClosedOK
-import re
 from fastapi.middleware.cors import CORSMiddleware
-from scapy.all import sniff, ARP, Ether, srp ,sniff, IP, TCP, ICMP, UDP, AsyncSniffer
+from scapy.all import sniff, ARP, Ether, srp ,sniff, IP, TCP, ICMP, UDP
 from typing import Dict
 import json
 import threading
@@ -23,6 +21,9 @@ last_packet_time_lock = threading.Lock()
 
 # WebSocket connections for /ws/log endpoint
 log_websocket_connections: List[WebSocket] = []
+
+# List to hold the buffered packets
+buffered_packets = []
 
 
 class Rule:
@@ -77,7 +78,7 @@ async def evaluate_rules(packet):
         for websocket in log_websocket_connections:
             try:
                 await websocket.send_json(default_event)
-            except ConnectionClosedOK:
+            except WebSocketDisconnect:
                 log_websocket_connections.remove(websocket)
     else:
         # Send matched events to the WebSocket
@@ -85,8 +86,11 @@ async def evaluate_rules(packet):
             try:
                 for event in matched_events:
                     await websocket.send_json(event)
-            except ConnectionClosedOK:
+            except WebSocketDisconnect:
                 log_websocket_connections.remove(websocket)
+
+        # Buffer the packets for re-sending when WebSocket reconnects
+        buffered_packets.extend(matched_events)
         
 
 def send_event_to_ws_logs(event):
@@ -203,7 +207,7 @@ def packet_sniffer_logs():
         
             
 
-    sniff(iface='Intel(R) Wireless-AC 9560 160MHz', prn=process_packet, store=0)
+    sniff(prn=process_packet, store=0)
 
 
 
@@ -217,7 +221,7 @@ def packet_sniffer_traffic():
                 last_packet_time[ip_src] = time.time()
             
     # Start sniffing packets
-    sniff(iface='Intel(R) Wireless-AC 9560 160MHz',prn=process_packet, store=0)
+    sniff(prn=process_packet, store=0)
 
   
 
@@ -328,16 +332,24 @@ def scan_network(ip_range):
 async def websocket_log_endpoint(websocket: WebSocket):
     await websocket.accept()
     log_websocket_connections.append(websocket)
+    
+    # Send buffered packets when the WebSocket reconnects
+    for event in buffered_packets:
+        await websocket.send_json(event)
+
     try:
         while True:
             # Send DDoS detection messages to the WebSocket client
             data = await websocket.receive_text()
             await websocket.send_text(f"{data}")
+    except WebSocketDisconnect:
+        pass  # WebSocket connection was closed from the client side
     except Exception as e:
         print("WebSocket error:", e)
     finally:
         # Remove the connection from the list of log_websocket_connections connections when it's closed
-        log_websocket_connections.remove(websocket)
+        if websocket in log_websocket_connections:
+            log_websocket_connections.remove(websocket)
         await websocket.close()
 
 @app.get("/network/devices/")
